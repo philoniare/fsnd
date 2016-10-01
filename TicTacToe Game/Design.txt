@@ -1,0 +1,16 @@
+1. Board representation - I have decided to represent the board using a simple
+one-dimensional array by mapping the indexes to each of the slots on the board like so:
+_____________
+|_0_|_1_|_2_|
+|_3_|_4_|_5_|
+|_6_|_7_|_8_|
+If the board state was like the following:
+_____________
+|_o_|_-_|_x_|
+|_-_|_-_|_-_|
+|_-_|_x_|_-_|
+In addition, instead of storing strings, it was more efficent to represent them as integers so that it is easier to determine if someone is winning. Therefore, 'x' will be player 1 or integer 1, 'o' will be player 2 or integer 2 and '-' will be intereg 0 since no move has been placed. Then, the API will store it as [2, 0, 1, 0, 0, 0, 0, 1, 0] and it would return the following string as response to an API call: "2,0,1,0,0,0,0,1,0". Then, the whichever platform calling the endpoint would have to interpret the board. 
+
+Users making a move will simply enter the index of the board to make their move. 
+
+2. Struggles - I think I should have carefully put more thought into design aspects of the project before jumping into it straight away. Some initial investment in identifying the models and model class methods could have greatly paid-off later on. Thanks to this experience, I have learned about the importance of planning ahead and carefully making decisions early on because they shape the project. An unplanned project could easily become too complex when the components become too tighly decoupled. Then, making changes to the application becomes even more difficult. 
