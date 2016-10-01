@@ -13,7 +13,8 @@ from google.appengine.api import taskqueue
 
 from models import User, Game, Score
 from models import StringMessage, NewGameForm, GameForm, MakeMoveForm,\
-    ScoreForms, GetHighScoresForm, UserRankingsForm, UserRankingForm
+    ScoreForms, GetHighScoresForm, UserRankingsForm, UserRankingForm, \
+    UserGamesForm
 from utils import get_by_urlsafe
 
 NEW_GAME_REQUEST = endpoints.ResourceContainer(NewGameForm)
@@ -30,7 +31,8 @@ CANCEL_GAME_REQUEST = endpoints.ResourceContainer(
     urlsafe_game_key=messages.StringField(1),)
 USER_REQUEST = endpoints.ResourceContainer(user_name=messages.StringField(1),
                                            email=messages.StringField(2))
-
+GET_USER_GAMES_REQUEST = endpoints.ResourceContainer(
+        user_name=messages.StringField(1),)
 MEMCACHE_MOVES = 'MOVES'
 
 @endpoints.api(name='tic_tac_toe', version='v1')
@@ -157,6 +159,21 @@ class TicTacToeApi(remote.Service):
     def get_scores(self, request):
         """Return all scores"""
         return ScoreForms(items=[score.to_form() for score in Score.query()])
+
+    @endpoints.method(request_message=GET_USER_GAMES_REQUEST, 
+                      response_message=UserGamesForm, 
+                      path='user/games/{user_name}',
+                      name='get_user_games',
+                      http_method='GET')
+    def get_user_games(self, request):
+        """Returns all active games of the user"""
+        user = User.query(User.name == request.user_name).get()
+        games = Game.query(Game.user == user.key)
+        active_games = []
+        for game in games:
+            if not(game.game_over):
+                active_games.append(game.key.urlsafe())
+        return UserGamesForm(games=active_games)
 
     @endpoints.method(request_message=USER_REQUEST,
                       response_message=ScoreForms,

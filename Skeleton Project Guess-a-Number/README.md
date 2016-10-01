@@ -1,12 +1,19 @@
 #Full Stack Nanodegree Project Tic Tac Toe
+
+## Instructions for playing the game:
+- Install GAE for Python if it is not installed
+- Navigate to the project folder and start the app by running `dev_appserver .`
+- Open up `localhost:8080/_ah/api/explorer` to explore the endpoints
+- Create a new user, new game and start making moves
  
 ##Game Description:
-Guess a number is a simple guessing game. Each game begins with a random 'target'
-number between the minimum and maximum values provided, and a maximum number of
-'attempts'. 'Guesses' are sent to the `make_move` endpoint which will reply
-with either: 'too low', 'too high', 'you win', or 'game over' (if the maximum
-number of attempts is reached).
-Many different Guess a Number games can be played by many different Users at any
+Tic Tac Toe is a simple game with played on a 3x3 board. Each game begins with an
+empty 3x3 and players take turns to place either 'x' or 'o' on each of the 9 fields.
+The player who manages to place their signs either diagonally, horizontally or 
+vertically wins the game. 'Moves' are sent to the `make_move` endpoint which will reply
+with either: `board_state`, 'draw', 'you win', or 'you lose' (if the other player
+manages to fulfill the winning conditions). 
+Many different Tic Tac Toe games can be played by many different Users at any
 given time. Each game can be retrieved or played by using the path parameter
 `urlsafe_game_key`.
 
@@ -52,13 +59,48 @@ given time. Each game can be retrieved or played by using the path parameter
     - Description: Accepts a 'guess' and returns the updated state of the game.
     If this causes a game to end, a corresponding Score entity will be created.
     
+ - **get_user_games**
+    - Path: 'user/games/{user_name}'
+    - Method: GET
+    - Parameters: user_name
+    - Returns: UserGamesForm.
+    - Description: Returns the urlsafe_game_key of all active games of the user. 
+    
+ - **cancel_game**
+    - Path: 'game/{urlsafe_game_key}/cancel'
+    - Method: DELETE
+    - Parameters: urlsafe_game_key
+    - Returns: StringMessage.
+    - Description: Cancels the given with the provided urlsafe_game_key. 
+
+ - **get_high_scores**
+    - Path: 'scores/high_scores'
+    - Method: GET
+    - Parameters: None
+    - Returns: ScoreForms.
+    - Description: Returns sorted list of high scores.
+
+ - **get_user_rankings**
+    - Path: 'scores/user_rankings'
+    - Method: GET
+    - Parameters: None
+    - Returns: UserRankingsForm.
+    - Description: Returns the rankings of all users based on performance score (win/ loss ratio).
+
+- **get_game_history**
+    - Path: 'game/{urlsafe_game_key}/history'
+    - Method: GET
+    - Parameters: urlsafe_game_key
+    - Returns: StringMessage.
+    - Description: Returns a list of moves from the game.
+
  - **get_scores**
     - Path: 'scores'
     - Method: GET
     - Parameters: None
     - Returns: ScoreForms.
     - Description: Returns all Scores in the database (unordered).
-    
+
  - **get_user_scores**
     - Path: 'scores/user/{user_name}'
     - Method: GET

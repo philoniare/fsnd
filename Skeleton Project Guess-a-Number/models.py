@@ -145,3 +145,7 @@ class UserRankingsForm(messages.Message):
 class StringMessage(messages.Message):
     """StringMessage-- outbound (single) string message"""
     message = messages.StringField(1, required=True)
+
+class UserGamesForm(messages.Message):
+    """Return all of the active games of the user"""
+    games = messages.StringField(1, repeated=True)
