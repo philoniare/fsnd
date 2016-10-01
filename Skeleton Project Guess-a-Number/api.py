@@ -13,22 +13,28 @@ from google.appengine.api import taskqueue
 
 from models import User, Game, Score
 from models import StringMessage, NewGameForm, GameForm, MakeMoveForm,\
-    ScoreForms
+    ScoreForms, GetHighScoresForm, UserRankingsForm, UserRankingForm
 from utils import get_by_urlsafe
 
 NEW_GAME_REQUEST = endpoints.ResourceContainer(NewGameForm)
+GET_HIGH_SCORES_REQUEST = endpoints.ResourceContainer(GetHighScoresForm)
+GET_USER_RANKINGS_REQUEST = endpoints.ResourceContainer()
+GET_GAME_REQUEST = endpoints.ResourceContainer(
+        urlsafe_game_key=messages.StringField(1),)
 GET_GAME_REQUEST = endpoints.ResourceContainer(
         urlsafe_game_key=messages.StringField(1),)
 MAKE_MOVE_REQUEST = endpoints.ResourceContainer(
     MakeMoveForm,
     urlsafe_game_key=messages.StringField(1),)
+CANCEL_GAME_REQUEST = endpoints.ResourceContainer(
+    urlsafe_game_key=messages.StringField(1),)
 USER_REQUEST = endpoints.ResourceContainer(user_name=messages.StringField(1),
                                            email=messages.StringField(2))
 
-MEMCACHE_MOVES_REMAINING = 'MOVES_REMAINING'
+MEMCACHE_MOVES = 'MOVES'
 
-@endpoints.api(name='guess_a_number', version='v1')
-class GuessANumberApi(remote.Service):
+@endpoints.api(name='tic_tac_toe', version='v1')
+class TicTacToeApi(remote.Service):
     """Game API"""
     @endpoints.method(request_message=USER_REQUEST,
                       response_message=StringMessage,
@@ -40,7 +46,8 @@ class GuessANumberApi(remote.Service):
         if User.query(User.name == request.user_name).get():
             raise endpoints.ConflictException(
                     'A User with that name already exists!')
-        user = User(name=request.user_name, email=request.email)
+        user = User(name=request.user_name, email=request.email,
+                    games_won=0, games_lost=0, performance=0.0)
         user.put()
         return StringMessage(message='User {} created!'.format(
                 request.user_name))
@@ -56,18 +63,35 @@ class GuessANumberApi(remote.Service):
         if not user:
             raise endpoints.NotFoundException(
                     'A User with that name does not exist!')
-        try:
-            game = Game.new_game(user.key, request.min,
-                                 request.max, request.attempts)
-        except ValueError:
-            raise endpoints.BadRequestException('Maximum must be greater '
-                                                'than minimum!')
+        game = Game.new_game(user.key)
 
-        # Use a task queue to update the average attempts remaining.
+        # Use a task queue to update the average moves.
         # This operation is not needed to complete the creation of a new game
         # so it is performed out of sequence.
-        taskqueue.add(url='/tasks/cache_average_attempts')
-        return game.to_form('Good luck playing Guess a Number!')
+        taskqueue.add(url='/tasks/cache_average_moves')
+        return game.to_form('Good luck playing Tic Tac Toe!')
+
+    @endpoints.method(request_message=GET_HIGH_SCORES_REQUEST,
+                      response_message=ScoreForms, 
+                      path='scores/high_scores',
+                      name='get_high_scores',
+                      http_method='GET')
+    def get_high_scores(self, request):
+        """Returns a list of high scores is descending order"""
+        sorted_scores = sorted(Score.query(), 
+            key=lambda x: x.moves, reverse=True)
+        return ScoreForms(items=[score.to_form() for score in sorted_scores])
+
+    @endpoints.method(request_message=GET_USER_RANKINGS_REQUEST,
+                      response_message=UserRankingsForm, 
+                      path='scores/user_rankings',
+                      name='get_user_rankings',
+                      http_method='GET')
+    def get_user_rankings(self, request):
+        """Returns ranking of all players by number of games won"""
+        ranked_users = sorted(User.query(), 
+            key=lambda x: x.performance)
+        return UserRankingsForm(users=[user.to_rank_form() for user in ranked_users])
 
     @endpoints.method(request_message=GET_GAME_REQUEST,
                       response_message=GameForm,
@@ -92,23 +116,39 @@ class GuessANumberApi(remote.Service):
         game = get_by_urlsafe(request.urlsafe_game_key, Game)
         if game.game_over:
             return game.to_form('Game already over!')
-
-        game.attempts_remaining -= 1
-        if request.guess == game.target:
-            game.end_game(True)
-            return game.to_form('You win!')
-
-        if request.guess < game.target:
-            msg = 'Too low!'
+        board_ind = request.move - 1
+        if(game.board_state[board_ind] == 0):
+            game.board_state[board_ind] = 1
+            game.moves += 1
+            game.moves_history.append(str(request.move))
         else:
-            msg = 'Too high!'
-
-        if game.attempts_remaining < 1:
-            game.end_game(False)
-            return game.to_form(msg + ' Game over!')
+          return game.to_form('Invalid move. Please choose' +
+            ' a different board index')
+        
+        winner = game.is_game_over()
+        if winner != 0:
+            if(winner == 1):
+                game.end_game(True)
+                return game.to_form('You win!')
+            else:
+                game.end_game(False)
+                return game.to_form('You lose!')
+        game.put()
+        return game.to_form('You have made a move!')
+    
+    @endpoints.method(request_message=CANCEL_GAME_REQUEST,
+                      response_message=StringMessage,
+                      path='game/{urlsafe_game_key}/cancel',
+                      name='cancel_game', 
+                      http_method='DELETE')
+    def cancel_game(self, request):
+        """Cancels a game. Returns a message indicating deletion"""
+        game = get_by_urlsafe(request.urlsafe_game_key, Game)
+        if game:
+            game.key.delete()  
+            return StringMessage(message="Game has been successfully deleted!")
         else:
-            game.put()
-            return game.to_form(msg)
+            raise endpoints.NotFoundException('Game not found!')
 
     @endpoints.method(response_message=ScoreForms,
                       path='scores',
@@ -132,25 +172,38 @@ class GuessANumberApi(remote.Service):
         scores = Score.query(Score.user == user.key)
         return ScoreForms(items=[score.to_form() for score in scores])
 
-    @endpoints.method(response_message=StringMessage,
-                      path='games/average_attempts',
-                      name='get_average_attempts_remaining',
+    @endpoints.method(request_message=GET_GAME_REQUEST,
+                      response_message=StringMessage,
+                      path='game/{urlsafe_game_key}/history',
+                      name='get_game_history',
                       http_method='GET')
-    def get_average_attempts(self, request):
+    def get_game_history(self, request):
+        """Return the current game state."""
+        game = get_by_urlsafe(request.urlsafe_game_key, Game)
+        if game:
+            moves = ", ".join(game.moves_history)
+            return StringMessage(message=moves or '')
+        else:
+            raise endpoints.NotFoundException('Game not found!')
+
+    @endpoints.method(response_message=StringMessage,
+                      path='games/average_moves',
+                      name='get_average_move',
+                      http_method='GET')
+    def get_average_moves(self, request):
         """Get the cached average moves remaining"""
-        return StringMessage(message=memcache.get(MEMCACHE_MOVES_REMAINING) or '')
+        return StringMessage(message=memcache.get(MEMCACHE_MOVES) or '')
 
     @staticmethod
-    def _cache_average_attempts():
-        """Populates memcache with the average moves remaining of Games"""
+    def _cache_average_moves():
+        """Populates memcache with the average moves of Games"""
         games = Game.query(Game.game_over == False).fetch()
         if games:
             count = len(games)
-            total_attempts_remaining = sum([game.attempts_remaining
-                                        for game in games])
-            average = float(total_attempts_remaining)/count
-            memcache.set(MEMCACHE_MOVES_REMAINING,
+            total_moves = sum([game.moves for game in games])
+            average = float(total_moves)/count
+            memcache.set(MEMCACHE_MOVES,
                          'The average moves remaining is {:.2f}'.format(average))
 
 
-api = endpoints.api_server([GuessANumberApi])
+api = endpoints.api_server([TicTacToeApi])
