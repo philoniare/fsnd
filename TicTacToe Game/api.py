@@ -41,8 +41,7 @@ class TicTacToeApi(remote.Service):
         if User.query(User.name == request.user_name).get():
             raise endpoints.ConflictException(
                     'A User with that name already exists!')
-        user = User(name=request.user_name, email=request.email,
-                    games_won=0, games_lost=0, performance=0.0)
+        user = User(name=request.user_name, email=request.email)
         user.put()
         return StringMessage(message='User {} created!'.format(
                 request.user_name))
@@ -89,8 +88,7 @@ class TicTacToeApi(remote.Service):
                       http_method='GET')
     def get_user_rankings(self, request):
         """Returns ranking of all players by number of games won"""
-        ranked_users = sorted(User.query(), 
-            key=lambda x: x.performance)
+        ranked_users = User.query().order(-User.performance)
         return UserRankingsForm(users=[user.to_rank_form() for user in ranked_users])
 
     @endpoints.method(request_message=GET_GAME_REQUEST,
@@ -128,7 +126,7 @@ class TicTacToeApi(remote.Service):
         if game.game_over:
             raise endpoints.ForbiddenException(
                 'Illegal Action: Game is already over.')
-        if(request.move > 9 or request.move < 1):
+        if(request.move not in range(9)):
             raise endpoints.ForbiddenException(
                 'Illegal Action: Move outside the range (1-9)')
 
@@ -137,25 +135,25 @@ class TicTacToeApi(remote.Service):
             if(user_making_move is player_one):
                 game.board_state[board_ind] = 1    
                 game.user_moves += 1
-                game.moves_history.append("Player " + user_making_move.name + 
-                    " moved to: " + str(request.move))
             else: 
                 game.board_state[board_ind] = 2
                 game.opponent_moves += 1
-                game.moves_history.append("Player " + opponent.name + 
-                    " moved to: " + str(request.move))
         else:
             raise endpoints.ForbiddenException(
                 'Illegal Move: The slot is already filled.')
         
         winner = game.is_game_over()
         if winner != 0:
+            game.moves_history.append("Player: {}, Move: {}, Status: {} || ".format(
+              user_making_move.name, str(request.move), "Game Over"))
             if(winner == 1):
                 game.end_game(True)
                 return game.to_form('You win!')
             else:
                 game.end_game(False)
                 return game.to_form('You lose!')
+        game.moves_history.append("Player: {}, Move: {}, Status: {} || ".format(
+          user_making_move.name, str(request.move), "Active"))
         game.put()
         return game.to_form(user_making_move.name + ' made a move!')
     
