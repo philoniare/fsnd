@@ -1,4 +1,5 @@
-#Full Stack Nanodegree Project Tic Tac Toe
+# Full Stack Nanodegree Project Tic Tac Toe
+In the [Developing Scalable Apps with Python](https://www.udacity.com/course/developing-scalable-apps-in-python--ud858) course we've learned how to write platform-agnostic apps using Google App Engine backed by Google Datastore.
 
 ## Instructions for playing the game:
 - Install GAE for Python if it is not installed
@@ -13,12 +14,11 @@ The player who manages to place their signs either diagonally, horizontally or
 vertically wins the game. 'Moves' are sent to the `make_move` endpoint which will reply
 with either: `board_state`, 'draw', 'you win', or 'you lose' (if the other player
 manages to fulfill the winning conditions). 
-Many different Tic Tac Toe games can be played by many different Users at any
-given time. Each game can be retrieved or played by using the path parameter
-`urlsafe_game_key`.
+Multiple Tic Tac Toe games can be played by users at any given time. 
+Each game can be retrieved by using the path parameter `urlsafe_game_key`.
 
 ##Score Keeping:
-The score for the Tic Tac Toe game is simply the number of moves that the player had to make
+The score for the Tic Tac Toe game is the number of moves that the player had to make
 in order to win the game. The smaller it is, the better. Also, each user has a property for 
 keeping of number of games won and number of games lost, which are included in calculating the 
 performance (win/loss ratio) of user. 
@@ -100,14 +100,14 @@ performance (win/loss ratio) of user.
     - Returns: StringMessage.
     - Description: Returns a list of moves from the game.
 
- - **get_scores**
+- **get_scores**
     - Path: 'scores'
     - Method: GET
     - Parameters: None
     - Returns: ScoreForms.
     - Description: Returns all Scores in the database (unordered).
 
- - **get_user_scores**
+- **get_user_scores**
     - Path: 'scores/user/{user_name}'
     - Method: GET
     - Parameters: user_name
@@ -115,7 +115,7 @@ performance (win/loss ratio) of user.
     - Description: Returns all Scores recorded by the provided player (unordered).
     Will raise a NotFoundException if the User does not exist.
     
- - **get_active_game_count**
+- **get_active_game_count**
     - Path: 'games/active'
     - Method: GET
     - Parameters: None
