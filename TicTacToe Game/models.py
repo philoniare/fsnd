@@ -22,11 +22,15 @@ class User(ndb.Model):
 
     @classmethod
     def fetch_users_with_active_games(cls):
-        users = User.query()
+        users, users_with_active_games = User.query(), []
         for user in users:
-            games = Game.query(Game.user == user.key, Game.game_over == False)
-            print(games)
-        return users
+            # User can be both user and opponent in a game
+            user_active_games = Game.query(ndb.OR(Game.user == user.key, Game.opponent == user.key))
+            # Filter only games that are active
+            user_game_count = user_active_games.filter(Game.game_over == False).count()
+            if user_game_count != 0:
+                users_with_active_games.append(user)
+        return users_with_active_games
 
 
 class Game(ndb.Model):
@@ -91,21 +95,21 @@ class Game(ndb.Model):
         score_user.put()
         score_opponent = Score(user=self.user, date=date.today(), 
             won=not(won), moves=self.opponent_moves)
-        scope_opponent.put()
+        score_opponent.put()
 
     def is_game_over(self):
         board, player_one, player_two = self.board_state, 1, 2
-        x_states, o_states = [], []
+        x_states, o_states = set(), set()
         possible_wins = [
-            (0, 1, 2), (3, 4, 5), (6, 7, 8), # horizontal win
-            (0, 3, 6), (1, 4, 7), (2, 5, 8), # vertical win
-            (0, 4, 8), (6, 4, 2)             # diagonal win
+            {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, # horizontal win
+            {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, # vertical win
+            {0, 4, 8}, {6, 4, 2}             # diagonal win
         ]
         for i in range(len(board)):
             if(board[i] == player_one):
-                x_states.append(i)
+                x_states.add(i)
             elif(board[i] == player_two):
-                o_states.append(i)
+                o_states.add(i)
         for win in possible_wins:
             if(len(win.intersection(x_states)) == 3):
                 return 1    # Player one won
