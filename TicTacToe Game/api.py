@@ -37,7 +37,7 @@ class TicTacToeApi(remote.Service):
                       name='create_user',
                       http_method='POST')
     def create_user(self, request):
-        """Create a User. Requires a unique username"""
+        """Create a new User. Requires a unique username"""
         if User.query(User.name == request.user_name).get():
             raise endpoints.ConflictException(
                     'A User with that name already exists!')
@@ -52,7 +52,7 @@ class TicTacToeApi(remote.Service):
                       name='new_game',
                       http_method='POST')
     def new_game(self, request):
-        """Creates new game"""
+        """Creates a new game"""
         user = User.query(User.name == request.user_name).get()
         opponent = User.query(User.name == request.opponent_name).get()
 
@@ -76,7 +76,7 @@ class TicTacToeApi(remote.Service):
                       name='get_high_scores',
                       http_method='GET')
     def get_high_scores(self, request):
-        """Returns a list of high scores is descending order"""
+        """Returns a list of high scores in descending order"""
         sorted_scores = sorted(Score.query(), 
             key=lambda x: x.moves, reverse=True)
         return ScoreForms(items=[score.to_form() for score in sorted_scores])
@@ -87,7 +87,7 @@ class TicTacToeApi(remote.Service):
                       name='get_user_rankings',
                       http_method='GET')
     def get_user_rankings(self, request):
-        """Returns ranking of all players by number of games won"""
+        """Returns the ranking of all players by number of games won"""
         ranked_users = User.query().order(-User.performance)
         return UserRankingsForm(users=[user.to_rank_form() for user in ranked_users])
 
@@ -97,7 +97,7 @@ class TicTacToeApi(remote.Service):
                       name='get_game',
                       http_method='GET')
     def get_game(self, request):
-        """Return the current game state."""
+        """Returns the current state of the game given urlsafe_game_key."""
         game = get_by_urlsafe(request.urlsafe_game_key, Game)
         if game:
             return game.to_form('Time to make a move!')
@@ -110,7 +110,7 @@ class TicTacToeApi(remote.Service):
                       name='make_move',
                       http_method='PUT')
     def make_move(self, request):
-        """Makes a move. Returns a game state with message"""
+        """Performs the move and returns the updated game state."""
         game = get_by_urlsafe(request.urlsafe_game_key, Game)
         user_making_move = User.query(User.name == request.player_name).get()
         player_one = game.user.get()
@@ -163,7 +163,7 @@ class TicTacToeApi(remote.Service):
                       name='cancel_game', 
                       http_method='DELETE')
     def cancel_game(self, request):
-        """Cancels a game. Returns a message indicating deletion"""
+        """Cancels the given game and returns a feedback message."""
         game = get_by_urlsafe(request.urlsafe_game_key, Game)
         if game:
             if game.game_over:
@@ -178,7 +178,7 @@ class TicTacToeApi(remote.Service):
                       name='get_scores',
                       http_method='GET')
     def get_scores(self, request):
-        """Return all scores"""
+        """Returns all scores"""
         return ScoreForms(items=[score.to_form() for score in Score.query()])
 
     @endpoints.method(request_message=GET_USER_GAMES_REQUEST, 
@@ -187,7 +187,7 @@ class TicTacToeApi(remote.Service):
                       name='get_user_games',
                       http_method='GET')
     def get_user_games(self, request):
-        """Returns all active games of the user"""
+        """Returns all active games of the given user"""
         user = User.query(User.name == request.user_name).get()
         active_games = [game.to_form("Active game") for game in Game.fetch_active_games(user)]
         return UserGamesForm(games=active_games)
@@ -198,7 +198,7 @@ class TicTacToeApi(remote.Service):
                       name='get_user_scores',
                       http_method='GET')
     def get_user_scores(self, request):
-        """Returns all of an individual User's scores"""
+        """Returns all scores for a given user"""
         user = User.query(User.name == request.user_name).get()
         if not user:
             raise endpoints.NotFoundException(
@@ -212,7 +212,7 @@ class TicTacToeApi(remote.Service):
                       name='get_game_history',
                       http_method='GET')
     def get_game_history(self, request):
-        """Return the current game state."""
+        """Return the history of moves given a urlsafe_game_key."""
         game = get_by_urlsafe(request.urlsafe_game_key, Game)
         if game:
             moves = ", ".join(game.moves_history)
@@ -225,7 +225,7 @@ class TicTacToeApi(remote.Service):
                       name='get_average_move',
                       http_method='GET')
     def get_average_moves(self, request):
-        """Get the cached average moves remaining"""
+        """Returns the cached average moves remaining"""
         return StringMessage(message=memcache.get(MEMCACHE_MOVES) or '')
 
     @staticmethod
